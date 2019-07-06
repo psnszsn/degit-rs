@@ -1,6 +1,7 @@
 use clap::{App, Arg, SubCommand};
 use std::path::PathBuf;
 use regex::Regex;
+use std::error::Error;
 
 #[derive(Debug)]
 enum Host {
@@ -23,7 +24,8 @@ fn main() {
             Arg::with_name("src")
                 .help("the source repo ypu want to download")
                 .required(true)
-                .index(1),
+                .index(1)
+                .validator(validate_src)
         )
         .arg(
             Arg::with_name("dest")
@@ -46,10 +48,12 @@ fn main() {
     println!("Using source file: {}", src);
 
     println!("Value for dest: {}", dest.display());
-    let repo = parse(src).unwrap();
+    let repo = parse(src);
 
     println!("{:#?}",repo);
 
+    let repo = repo.unwrap();
+    println!("{:#?}",repo);
     let url = match repo.host {
         Host::Github => format!("https://github.com/{}/{}/archive/master.tar.gz",repo.owner, repo.project),
         Host::Gitlab => "sal".to_owned(),
@@ -61,7 +65,7 @@ fn main() {
     std::io::copy(&mut resp, &mut file).expect("failed to copy content");
     println!("Hello, world! {}", url);
 }
-fn parse(src: &str) -> Option<Repo> {
+fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
     let repo_match = Regex::new(
         r"(?x)
                                 (?P<host>(git@|https://)([\w\.@]+)(/|:))
@@ -76,6 +80,7 @@ fn parse(src: &str) -> Option<Repo> {
         let caps = repo_match.captures(src).unwrap();
         let host = caps.name("host").unwrap().as_str();
         let hosten;
+        // println!("{:#?}", Err("Git provider not supported.")); 
         if host.contains("github"){
             hosten = Host::Github;
         } else if host.contains("gitlab"){
@@ -83,16 +88,19 @@ fn parse(src: &str) -> Option<Repo> {
         } else if host.contains("bitbucket"){
             hosten = Host::BitBucket;
         }else{
-            return None;
+            return Err("Git provider not supported.")?;
         }
         let res = Repo {
             owner: caps.name("owner").unwrap().as_str().to_string(),
             project: caps.name("repo").unwrap().as_str().to_string(),
             host: hosten,
         };
-        return Some(res);
+        return Ok(res);
     }
-    assert!(repo_match.is_match(src));
 
-    None
+    Err("Could not parse repository")?
+}
+
+fn validate_src(src: String)-> Result<(), String>{
+    parse(&src).map(|_| ()).map_err(|x|x.to_string())
 }
