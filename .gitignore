@@ -1,2 +1,5 @@
-/target
-**/*.rs.bk
+*~
+fonts/.local/share/fonts/Nerd Fonts
+_elementary/icons
+_elementary/themes
+.netrwhist
