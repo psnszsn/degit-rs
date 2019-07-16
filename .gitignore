@@ -1,5 +1,3 @@
-*~
-fonts/.local/share/fonts/Nerd Fonts
-_elementary/icons
-_elementary/themes
-.netrwhist
+target/
+Cargo.lock
+**/*.rs.bk
