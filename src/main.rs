@@ -2,20 +2,34 @@ use clap::{App, Arg, SubCommand};
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
-use std::{error::Error, path::PathBuf};
+use std::{error::Error, fmt, path::PathBuf};
 use tar::Archive;
+use colored::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Host {
     Github,
     Gitlab,
     BitBucket,
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Repo {
     host: Host,
     project: String,
     owner: String,
+}
+
+impl fmt::Display for Repo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let owner =self.owner.bold().underline();
+        let project = self.project.red();
+        let host = match self.host{
+            Host::Github => "GitHub".blue(),
+            Host::Gitlab => "GitLab".red(),
+            Host::BitBucket => "BitBucket".green(),
+        };
+        write!(f, "{}/{} from {}", owner , project, host)
+    }
 }
 
 fn main() {
@@ -49,23 +63,18 @@ fn main() {
         .map_or(std::env::current_dir().unwrap(), |x| {
             PathBuf::from(x).canonicalize().unwrap()
         });
-
     let src = matches.value_of("src").unwrap();
-    println!("Using source file: {}", src);
 
-    println!("Value for dest: {}", dest.display());
     let repo = parse(src);
-
-    println!("{:#?}", repo);
-
     let repo = repo.unwrap();
-    println!("{:#?}", repo);
+    
 
     let fname = dest.join(&repo.project);
-    download(repo,fname);
-
+    download(repo, fname);
 }
-fn download(repo: Repo, dest: PathBuf)->Result<(), Box<dyn Error>>{
+fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
+
+    println!("Downloading {} to {}", repo, dest.display());
     let url = match repo.host {
         Host::Github => format!(
             "https://github.com/{}/{}/archive/master.tar.gz",
@@ -77,8 +86,7 @@ fn download(repo: Repo, dest: PathBuf)->Result<(), Box<dyn Error>>{
         ),
         Host::BitBucket => "sal".to_string(),
     };
-    println!("{}", url);
-    // let mut resp = reqwest::get(&url).expect("request failed");
+    // println!("{}", url);
     let client = reqwest::Client::new();
 
     let request = client.get(&url).send().unwrap();
@@ -88,33 +96,38 @@ fn download(repo: Repo, dest: PathBuf)->Result<(), Box<dyn Error>>{
         Some(x) => {
             let p = ProgressBar::new(x);
             p.set_style(ProgressStyle::default_bar()
-                     .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+                     .template("> {wide_msg}\n{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
                      .progress_chars("#>-"));
             p
         }
-        None => ProgressBar::new_spinner(),
+        None => {
+            let p = ProgressBar::new_spinner();
+            p
+        }
     };
 
-    println!("{:#?}", request.content_length());
+    // println!("{:#?}", request.content_length());
 
     // let mut file = std::fs::File::create(fname).unwrap();
     // std::io::copy(&mut pb.wrap_read(request), &mut file).expect("failed to copy content");
     let tar = GzDecoder::new(pb.wrap_read(request));
     let mut archive = Archive::new(tar);
     archive
-            .entries()?
-            .filter_map(|e| e.ok())
-            .map(|mut entry| -> Result<PathBuf, Box<dyn Error>> {
-                let path = entry.path()?;
-                let path = path.strip_prefix(path.components().next().unwrap())?.to_owned();
-                entry.unpack(dest.join( &path ))?;
-                Ok(path)
-            })
-            .filter_map(|e| e.ok())
-            .for_each(|x| println!("> {}", x.display()));
+        .entries()?
+        .filter_map(|e| e.ok())
+        .map(|mut entry| -> Result<PathBuf, Box<dyn Error>> {
+            let path = entry.path()?;
+            let path = path
+                .strip_prefix(path.components().next().unwrap())?
+                .to_owned();
+            entry.unpack(dest.join(&path))?;
+            Ok(path)
+        })
+        .filter_map(|e| e.ok())
+        .for_each(|x| pb.set_message(&format!("{}", x.display())));
 
     // archive.unpack(dest).unwrap();
-    println!("Hello, world! {}", url);
+    pb.finish_with_message("Done...");
     Ok(())
 }
 fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
@@ -155,4 +168,24 @@ fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
 
 fn validate_src(src: String) -> Result<(), String> {
     parse(&src).map(|_| ()).map_err(|x| x.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_test() {
+        let gitlab_repo1 = Repo {
+            host: Host::Gitlab,
+            project: "vladDotfiles".to_string(),
+            owner: "psnszsn".to_string(),
+        };
+
+        assert_eq!(
+            parse("https://gitlab.com/psnszsn/vladDotfiles").unwrap(),
+            gitlab_repo1
+        );
+        assert_eq!(parse("gitlab:psnszsn/vladDotfiles").unwrap(), gitlab_repo1);
+    }
 }
