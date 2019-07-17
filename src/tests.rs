@@ -3,23 +3,6 @@
 
     #[test]
     fn gitlab_test() {
-        let gitlab_repo1 = Repo {
-            host: Host::Gitlab("gitlab.com".to_string()),
-            owner: "psnszsn".to_string(),
-            project: "simpler-notes".to_string(),
-        };
-
-        assert_eq!(
-            parse("https://gitlab.com/psnszsn/simpler-notes").unwrap(),
-            gitlab_repo1
-        );
-        assert_eq!(
-            download(gitlab_repo1, PathBuf::from("/tmp/tests")).unwrap(),
-            ()
-        );
-    }
-    #[test]
-    fn gitlabshort_test() {
         let repo = Repo {
             host: Host::Gitlab("gitlab.com".to_string()),
             owner: "Rich-Harris".to_string(),
@@ -31,12 +14,20 @@
             repo
         );
         assert_eq!(
+            parse("https://gitlab.com/Rich-Harris/degit-test-repo.git").unwrap(),
+            repo
+        );
+        assert_eq!(
+            parse("git@gitlab.com:Rich-Harris/degit-test-repo.git").unwrap(),
+            repo
+        );
+        assert_eq!(
             download(repo, PathBuf::from("/tmp/tests")).unwrap(),
             ()
         );
     }
     #[test]
-    fn github_short() {
+    fn github_test() {
         let repo = Repo {
             host: Host::Github,
             owner: "sveltejs".to_string(),
@@ -49,6 +40,14 @@
         );
         assert_eq!(
             parse("github:sveltejs/template").unwrap(),
+            repo
+        );
+        assert_eq!(
+            parse("https://github.com/sveltejs/template.git").unwrap(),
+            repo
+        );
+        assert_eq!(
+            parse("git@github.com:sveltejs/template.git").unwrap(),
             repo
         );
         assert_eq!(
