@@ -1,10 +1,10 @@
 use clap::{App, Arg, SubCommand};
+use colored::*;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use std::{error::Error, fmt, path::PathBuf};
 use tar::Archive;
-use colored::*;
 
 #[derive(Debug, PartialEq)]
 enum Host {
@@ -21,14 +21,14 @@ struct Repo {
 
 impl fmt::Display for Repo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let owner =self.owner.bold().underline();
+        let owner = self.owner.bold().underline();
         let project = self.project.red();
-        let host = match self.host{
+        let host = match self.host {
             Host::Github => "GitHub".blue(),
             Host::Gitlab(_) => "GitLab".red(),
             Host::BitBucket => "BitBucket".green(),
         };
-        write!(f, "{}/{} from {}", owner , project, host)
+        write!(f, "{}/{} from {}", owner, project, host)
     }
 }
 
@@ -63,17 +63,19 @@ fn main() {
 
     let repo = parse(src);
     let repo = repo.unwrap();
-    
+
     let dest = matches
         .value_of("dest")
         .map_or(std::env::current_dir().unwrap().join(&repo.project), |x| {
             PathBuf::from(x)
         });
 
-    download(repo, dest).unwrap();
+    match download(repo, dest) {
+        Err(x) => println!("{}", x),
+        _ => (),
+    }
 }
 fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
-
     let url = match &repo.host {
         Host::Github => format!(
             "https://github.com/{}/{}/archive/master.tar.gz",
@@ -94,9 +96,9 @@ fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
         reqwest::StatusCode::UNAUTHORIZED => {
             Err("Could not find repository.")?;
         }
-        s => println!("Received response status: {:?}", s),
+        s => Err(format!("Received response status: {:?}", s))?,
     };
-  
+
     let total_size = request.content_length();
 
     let pb = match total_size {
@@ -151,12 +153,21 @@ fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
                                 ",
     )
     .unwrap();
+    let shortrepo_match = Regex::new(
+        r"(?x)
+                                (?P<host>(github|gitlab|bitbucket)?)
+                                (?P<colon>(:))?
+                                (?P<owner>[\w,\-,_]+)
+                                /
+                                (?P<repo>[\w,\-,_]+)
+                                ",
+    )
+    .unwrap();
     if repo_match.is_match(src) {
         let caps = repo_match.captures(src).unwrap();
         let host = caps.name("host").unwrap().as_str();
-        println!("{}",host);
+        // println!("{}",host);
         let hosten;
-        // println!("{:#?}", Err("Git provider not supported."));
         if host.contains("github") {
             hosten = Host::Github;
         } else if host.contains("gitlab") {
@@ -173,7 +184,31 @@ fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
         };
         return Ok(res);
     }
-
+    if shortrepo_match.is_match(src) {
+        let caps = shortrepo_match.captures(src).unwrap();
+        let host = caps.name("host").unwrap().as_str();
+        let colon = caps.name("colon");
+        let hosten;
+        if let None = colon {
+            hosten = Host::Github;
+        } else {
+            if host.contains("github") {
+                hosten = Host::Github;
+            } else if host.contains("gitlab") {
+                hosten = Host::Gitlab("gitlab.com".to_string());
+            } else if host.contains("bitbucket") {
+                hosten = Host::BitBucket;
+            } else {
+                return Err("Git provider not supported.")?;
+            }
+        }
+        let res = Repo {
+            owner: caps.name("owner").unwrap().as_str().to_string(),
+            project: caps.name("repo").unwrap().as_str().to_string(),
+            host: hosten,
+        };
+        return Ok(res);
+    }
     Err("Could not parse repository")?
 }
 
@@ -182,13 +217,15 @@ fn validate_src(src: String) -> Result<(), String> {
 }
 fn validate_dest(dest: String) -> Result<(), String> {
     let path = PathBuf::from(dest);
-    if path.exists(){
+    if path.exists() {
         if path.is_dir() {
-            let count = std::fs::read_dir(path).map_err(|_| "Could not read directory.")?.count();
+            let count = std::fs::read_dir(path)
+                .map_err(|_| "Could not read directory.")?
+                .count();
             if count != 0 {
                 Err("Directory is not empty.")?
             }
-        }else{
+        } else {
             Err("Destination is not a directory.")?
         }
     }
@@ -210,6 +247,10 @@ mod tests {
         assert_eq!(
             parse("https://gitlab.com/psnszsn/vladDotfiles").unwrap(),
             gitlab_repo1
+        );
+        assert_eq!(
+            download(gitlab_repo1, PathBuf::from("/tmp/tests")).unwrap(),
+            ()
         );
         // assert_eq!(parse("gitlab:psnszsn/vladDotfiles").unwrap(), gitlab_repo1);
     }
