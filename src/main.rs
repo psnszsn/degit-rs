@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 use colored::*;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -49,7 +49,8 @@ fn main() {
                 .help("download location")
                 .required(false)
                 .index(2)
-                .validator(validate_dest),
+                .validator(validate_dest)
+                .default_value("."),
         )
         .arg(
             Arg::with_name("v")
