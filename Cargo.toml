@@ -5,7 +5,8 @@ authors = ["Vlad Pănăzan <brgdvz@gmail.com>"]
 edition = "2018"
 description = "Rust rewrite of degit"
 license = "MIT"
-
+readme= "README.txt"
+repository = "https://github.com/psnszsn/degit-rs"
 
 [dependencies]
 clap = "2.33.0"
