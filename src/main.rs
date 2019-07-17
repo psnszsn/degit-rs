@@ -85,9 +85,12 @@ fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
             "https://{}/{}/{}/repository/archive.tar.gz",
             x, repo.owner, repo.project
         ),
-        Host::BitBucket => "sal".to_string(),
+        Host::BitBucket => format!(
+            "https://bitbucket.org/{}/{}/get/master.zip",
+            repo.owner, repo.project
+        ),
     };
-    println!("{}", url);
+    // println!("{}", url);
     let client = reqwest::Client::new();
 
     let request = client.get(&url).send().unwrap();
