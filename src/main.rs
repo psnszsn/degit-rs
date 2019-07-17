@@ -48,7 +48,8 @@ fn main() {
             Arg::with_name("dest")
                 .help("download location")
                 .required(false)
-                .index(2),
+                .index(2)
+                .validator(validate_dest),
         )
         .arg(
             Arg::with_name("v")
@@ -58,19 +59,18 @@ fn main() {
         )
         .get_matches();
 
-    let dest = matches
-        .value_of("dest")
-        .map_or(std::env::current_dir().unwrap(), |x| {
-            PathBuf::from(x).canonicalize().unwrap()
-        });
     let src = matches.value_of("src").unwrap();
 
     let repo = parse(src);
     let repo = repo.unwrap();
     
+    let dest = matches
+        .value_of("dest")
+        .map_or(std::env::current_dir().unwrap().join(&repo.project), |x| {
+            PathBuf::from(x)
+        });
 
-    let fname = dest.join(&repo.project);
-    download(repo, fname);
+    download(repo, dest);
 }
 fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
 
@@ -168,6 +168,20 @@ fn parse(src: &str) -> Result<Repo, Box<dyn Error>> {
 
 fn validate_src(src: String) -> Result<(), String> {
     parse(&src).map(|_| ()).map_err(|x| x.to_string())
+}
+fn validate_dest(dest: String) -> Result<(), String> {
+    let path = PathBuf::from(dest);
+    if path.exists(){
+        if path.is_dir() {
+            let count = std::fs::read_dir(path).map_err(|_| "Could not read directory.")?.count();
+            if count != 0 {
+                Err("Directory is not empty.")?
+            }
+        }else{
+            Err("Destination is not a directory.")?
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
