@@ -1,4 +1,4 @@
-use clap::{App, Arg};
+use clap::{App, Arg, crate_version};
 use colored::*;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -34,7 +34,7 @@ impl fmt::Display for Repo {
 
 fn main() {
     let matches = App::new("degit-rs")
-        .version("1.0")
+        .version(crate_version!())
         .author("Vlad Pănăzan <brgdvz@gmail.com>")
         .about("Download the contents of a git repository without cloning it.")
         .arg(
