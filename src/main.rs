@@ -1,4 +1,4 @@
-use clap::{App, Arg, crate_version};
+use clap::{crate_version, App, Arg};
 use colored::*;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -141,8 +141,6 @@ fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
     println!("Downloading {} to {}", repo, dest.display());
     // println!("{:#?}", request.content_length());
 
-    // let mut file = std::fs::File::create(fname).unwrap();
-    // std::io::copy(&mut pb.wrap_read(request), &mut file).expect("failed to copy content");
     let tar = GzDecoder::new(pb.wrap_read(request));
     let mut archive = Archive::new(tar);
     archive
@@ -242,9 +240,7 @@ fn validate_dest(dest: String) -> Result<(), String> {
     let path = PathBuf::from(dest);
     if path.exists() {
         if path.is_dir() {
-            let count = std::fs::read_dir(path)
-                .map_err(|_| "Could not read directory.")?
-                .count();
+            let count = std::fs::read_dir(&path).map_err(|x| x.to_string())?.count();
             if count != 0 {
                 Err("Directory is not empty.")?
             }
@@ -252,6 +248,33 @@ fn validate_dest(dest: String) -> Result<(), String> {
             Err("Destination is not a directory.")?
         }
     }
+    let mut realpath = {
+        if path.is_relative() {
+            let mut realpath = std::fs::canonicalize(std::path::Path::new(".")).unwrap();
+
+            for c in path.components() {
+                // println!("component: {:?}", c);
+                match c {
+                    std::path::Component::ParentDir => {
+                        realpath = realpath.parent().unwrap().to_path_buf()
+                    }
+                    std::path::Component::Normal(c) => realpath.push(c),
+                    _ => (),
+                }
+            }
+            realpath
+        } else {
+            path
+        }
+    };
+    while !realpath.exists(){
+        realpath.pop();
+    }
+    if std::fs::metadata(&realpath).unwrap().permissions().readonly(){
+        Err("Directory is read-only.")?
+    }
+    // println!("realpath: {:?}", realpath);
+
     Ok(())
 }
 
