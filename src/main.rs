@@ -39,7 +39,25 @@ fn main() {
         .about("Download the contents of a git repository without cloning it.")
         .arg(
             Arg::with_name("src")
-                .help("the source repo ypu want to download")
+                .help("the source repo you want to download")
+                .long_help(
+"The repository you want to download. This can be either the full url or a shortened form:
+
+user/repo
+github:user/repo
+git@github.com:user/repo
+https://github.com/user/repo
+
+gitlab:user/repo
+git@gitlab.com:user/repo
+https://gitlab.com/user/repo
+
+bitbucket:user/repo
+git@bitbucket.org:user/repo
+https://bitbucket.org/user/repo
+
+")
+
                 .required(true)
                 .index(1)
                 .validator(validate_src),
@@ -47,6 +65,7 @@ fn main() {
         .arg(
             Arg::with_name("dest")
                 .help("download location")
+                .long_help("The destination directory. This is where the contents of the repository will be downloaded.")
                 .required(false)
                 .index(2)
                 .validator(validate_dest)
