@@ -1,0 +1,28 @@
+image: "rust:latest"
+
+before_script:
+  # - apt-get update -yq
+  # - apt-get install -o dir::cache::archives="$APT_CACHE_DIR" -y sqlite3 libsqlite3-dev
+  # - apt-get install -yqq --no-install-recommends build-essential
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+  APT_CACHE_DIR: $CI_PROJECT_DIR/apt
+cache:
+  paths:
+    - apt/
+    - cargo/
+    - target/
+
+build:cargo:
+  stage: build
+  script:
+    - cargo build --release
+  artifacts:
+    paths:
+      - target/release/degit
+
+test:cargo:
+  script:
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo test --all --verbose
