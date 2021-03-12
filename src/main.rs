@@ -98,7 +98,7 @@ https://bitbucket.org/user/repo
 fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
     let url = match &repo.host {
         Host::Github => format!(
-            "https://github.com/{}/{}/archive/master.tar.gz",
+            "https://github.com/{}/{}/archive/HEAD.tar.gz",
             repo.owner, repo.project
         ),
         Host::Gitlab(x) => format!(
@@ -106,7 +106,7 @@ fn download(repo: Repo, dest: PathBuf) -> Result<(), Box<dyn Error>> {
             x, repo.owner, repo.project
         ),
         Host::BitBucket => format!(
-            "https://bitbucket.org/{}/{}/get/master.zip",
+            "https://bitbucket.org/{}/{}/get/HEAD.zip",
             repo.owner, repo.project
         ),
     };

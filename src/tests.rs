@@ -38,6 +38,23 @@ fn github() {
     assert_eq!(download(repo, PathBuf::from("/tmp/tests")).unwrap(), ());
 }
 #[test]
+fn github_main() {
+    let repo = Repo {
+        host: Host::Github,
+        owner: "octocat".to_string(),
+        project: "Spoon-Knife".to_string(),
+    };
+
+    assert_eq!(parse("octocat/Spoon-Knife").unwrap(), repo);
+    assert_eq!(parse("github:octocat/Spoon-Knife").unwrap(), repo);
+    assert_eq!(
+        parse("https://github.com/octocat/Spoon-Knife.git").unwrap(),
+        repo
+    );
+    assert_eq!(parse("git@github.com:octocat/Spoon-Knife.git").unwrap(), repo);
+    assert_eq!(download(repo, PathBuf::from("/tmp/tests")).unwrap(), ());
+}
+#[test]
 fn gitlab_hosted() {
     let repo = Repo {
         host: Host::Gitlab("gitlab.gnome.org".to_string()),
