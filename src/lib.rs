@@ -32,9 +32,9 @@ impl fmt::Display for Repo {
     }
 }
 
-pub fn degit(src: &str, dest: PathBuf) {
+pub fn degit(src: &str, dest: &str) {
     let repo = parse(src).unwrap();
-    match download(repo, dest) {
+    match download(repo, PathBuf::from(dest)) {
         Err(x) => println!("{}", x),
         _ => (),
     }
