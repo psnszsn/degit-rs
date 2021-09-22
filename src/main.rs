@@ -1,5 +1,4 @@
 use clap::{crate_version, App, Arg};
-use std::{path::PathBuf};
 
 fn main() {
     let matches = App::new("degit-rs")
@@ -49,9 +48,6 @@ https://bitbucket.org/user/repo
         .get_matches();
 
     let src = matches.value_of("src").unwrap();
-
-    let dest = PathBuf::from(matches
-        .value_of("dest").unwrap());
-
+    let dest = matches.value_of("dest").unwrap();
     degit::degit(src, dest);
 }
